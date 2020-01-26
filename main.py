@@ -17,23 +17,21 @@ pool_workers = 10
 
 
 def load_csv(csv_path):
-	data = {}
-	index_to_key = []
+	data = []
+	key_to_index = {}
 
 	with open(train_path, "r") as f:
 		reader = csv.reader(f)
 
 		first_row = next(iter(reader))
 
-		for key in first_row:
-			data[key] = []
-			index_to_key.append(key)
+		for index, key in enumerate(first_row):
+			key_to_index[key] = index
 
 		for row in reader:
-			for i, item in enumerate(row):
-				data[index_to_key[i]].append(item)
+			data.append(row)
 
-	return data
+	return data, key_to_index
 
 def download_file(file_path):
 	seriesInstanceUID = file_path.split("/")[-2]
@@ -61,34 +59,33 @@ def save_image(id_, file_path):
 
 	return True
 
+def download_data(item):
+	if save_image(*item):
+		return True
+	return False
 
-
-def build_dataset(data):
+def build_dataset(data, key_to_index):
 	pool = Pool(processes=pool_workers)
 
-	indexes = [i for i in range(len(next(iter(data.values()))))]
+	download_meta_data = []
 	counts = {}
 
-	def download_data(index):
-		patient_id = data["patient_id"][index]
+	for item in data[:limit]:
+		patient_id = item[key_to_index["patient_id"]]
+		file_path = item[key_to_index["image file path"]]
 
 		if patient_id not in counts:
 			counts[patient_id] = 0
 		else:
 			counts[patient_id] += 1
 
-		patient_id += "_" + str(counts[patient_id])
+		download_meta_data.append((patient_id, file_path))
 
-		if save_image(patient_id, data["image file path"][index]):
-			return True
-		return False
-
-	for i in range(10):
-		download_data(i)
+	pool.map(download_data, download_meta_data)
 
 def main():
-	train_data = load_csv(train_path)
-	build_dataset(train_data)
+	train_data, key_to_index = load_csv(train_path)
+	build_dataset(train_data, key_to_index)
 
 
 if __name__ == "__main__":
