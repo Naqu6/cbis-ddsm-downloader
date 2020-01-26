@@ -12,7 +12,7 @@ train_path = "../mass_case_description_train_set.csv"
 test_path = "../mass_case_description_test_set.csv"
 
 output_dir = "../data/"
-limit = 100
+limit = 10
 pool_workers = 10
 
 
